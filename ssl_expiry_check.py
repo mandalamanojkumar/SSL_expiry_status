@@ -14,13 +14,17 @@ def check_ssl_expiry(domain):
         if 'details' in endpoint_data:
             cert_data = endpoint_data['details']['cert']
             
-            # Check if 'notAfter' key is present in the cert data
-            if 'notAfter' in cert_data:
-                expiry_date_str = cert_data['notAfter']
-                expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                days_until_expiry = (expiry_date - datetime.datetime.utcnow()).days
+            # Check if 'validity' key is present in the cert data
+            if 'validity' in cert_data:
+                validity_data = cert_data['validity']
                 
-                return days_until_expiry
+                # Check if 'notAfter' key is present in the validity data
+                if 'notAfter' in validity_data:
+                    expiry_date_str = validity_data['notAfter']
+                    expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%dT%H:%M:%SZ")
+                    days_until_expiry = (expiry_date - datetime.datetime.utcnow()).days
+                    
+                    return days_until_expiry
     return None
 
 def main():
