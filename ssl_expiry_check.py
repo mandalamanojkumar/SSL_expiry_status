@@ -12,7 +12,7 @@ for domain in domains:
     data = response.json()
 
     if data['status'] == 'READY':
-        expiry_date_str = data['certs'][0]['notAfter']
+        expiry_date_str = data['endpoints'][0]['details']['cert']['notAfter']
         expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%dT%H:%M:%S.%fZ')
 
         days_remaining = (expiry_date - datetime.datetime.now()).days
