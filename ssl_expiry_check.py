@@ -1,29 +1,37 @@
 import requests
 import datetime
-import os
 
-# Read domains from a file (each line is a domain)
-with open('domain_list.txt', 'r') as file:
-    domains = file.read().splitlines()
-
-# Iterate through domains
-for domain in domains:
-    response = requests.get(f'https://api.ssllabs.com/api/v3/analyze?host={domain}')
+def check_ssl_expiry(domain):
+    api_url = f"https://api.ssllabs.com/api/v3/analyze?host={domain}"
+    response = requests.get(api_url)
     data = response.json()
+    
+    # Check if 'endpoints' key is present in the response
+    if 'endpoints' in data:
+        endpoint_data = data['endpoints'][0]
+        
+        # Check if 'details' key is present in the endpoint data
+        if 'details' in endpoint_data:
+            cert_data = endpoint_data['details']['cert']
+            
+            # Check if 'notAfter' key is present in the cert data
+            if 'notAfter' in cert_data:
+                expiry_date_str = cert_data['notAfter']
+                expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                days_until_expiry = (expiry_date - datetime.datetime.utcnow()).days
+                
+                return days_until_expiry
+    return None
 
-    if data['status'] == 'READY':
-        expiry_date_str = data['endpoints'][0]['details']['cert']['notAfter']
-        expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+def main():
+    domain_list = ["example.com", "google.com", "github.com"]  # Add your domains here
+    
+    for domain in domain_list:
+        days_until_expiry = check_ssl_expiry(domain)
+        
+        if days_until_expiry is not None:
+            print(f"Domain: {domain}")
+            print(f"Days until SSL certificate expiry: {days_until_expiry} days\n")
 
-        days_remaining = (expiry_date - datetime.datetime.now()).days
-
-        if days_remaining < 30:
-            message = (
-                f"SSL Expiry Alert\n"
-                f"   * Domain: {domain}\n"
-                f"   * Warning: The SSL certificate for {domain} will expire in {days_remaining} days."
-            )
-
-            slack_webhook_url = os.environ['SLACK_WEBHOOK_URL']
-            payload = {"text": message}
-            requests.post(slack_webhook_url, json=payload)
+if __name__ == "__main__":
+    main()
